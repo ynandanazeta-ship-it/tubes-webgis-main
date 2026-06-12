@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="./resources/ol.css">
+        <link rel="stylesheet" href="resources/fontawesome-all.min.css">
+        <link href="resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
+        <link rel="stylesheet" href="./resources/qgis2web.css">
+        <style>
+        html, body {
+            background-color: #ffffff;
+        }
+        .ol-control > * {
+            background-color: #f8f8f8!important;
+            color: #444444!important;
+            border-radius: 0px;
+        }
+        .ol-attribution a, .gcd-gl-input::placeholder, .search-layer-input-search::placeholder {
+            color: #444444!important;
+        }
+        .search-layer-input-search {
+            background-color: #f8f8f8!important;
+        }
+        .ol-control > *:focus, .ol-control >*:hover {
+            background-color: rgba(248, 248, 248, 0.7)!important;
+        } 
+        .ol-control {
+            background-color: rgba(255,255,255,.4) !important;
+            padding: 2px !important;
+        } 
+        </style>
+
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+            <div id="popup" class="ol-popup">
+                <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+                <div id="popup-content"></div>
+            </div>
+        </div>
+        <script src="resources/qgis2web_expressions.js"></script>
+        <script src="./resources/functions.js"></script>
+        <script src="./resources/ol.js"></script>
+        <script src="./resources/ol-layerswitcher.js"></script>
+        <script src="resources/photon-geocoder-autocomplete.min.js"></script>
+        <script src="resources/olms.js"></script>
+        <script src="layers/Kec_Weda_Tengah_2.js"></script>
+        <script src="styles/Kec_Weda_Tengah_2_style.js"></script>
+        <script src="./layers/layers.js" type="text/javascript"></script> 
+        <script src="./resources/Autolinker.min.js"></script>
+        <script src="./resources/qgis2web.js"></script>        
+    
+        <script>
+     window.addEventListener('load', function() {
+    // Pastikan layer utama QGIS Anda sudah terdefinisi secara global
+    if (typeof lyr_Kec_Weda_Tengah_2 !== 'undefined') {
+        
+        // Buat penampung kosong untuk backup data asli
+        var originalFeatures = [];
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'FILTER_RSEI_LEVEL') {
+                var activeLevels = event.data.levels;
+                var source = lyr_Kec_Weda_Tengah_2.getSource();
+                
+                // Trik Jitu: Jika backup masih kosong, ambil data dari peta yang sedang menyala saat ini
+                if (!originalFeatures || originalFeatures.length === 0) {
+                    originalFeatures = source.getFeatures().slice();
+                }
+
+                // Jika data memang belum siap di memori, hentikan proses sejenak
+                if (originalFeatures.length === 0) {
+                    console.warn("Data peta belum siap atau belum selesai di-load.");
+                    return;
+                }
+                
+                // Kosongkan peta sebelum di-filter
+                source.clear();
+                
+                // Lakukan penyaringan berdasarkan kolom 'DN' yang sudah kita ketahui
+                var filteredFeatures = originalFeatures.filter(function(feature) {
+                    var props = feature.getProperties();
+                    
+                    // Ambil nilai DN (bisa berupa huruf kecil/besar tergantung QGIS)
+                    var dnValue = props['DN'] !== undefined ? props['DN'] : props['dn'];
+                    
+                    if (dnValue === undefined || dnValue === null) {
+                        return true; // Tetap tampilkan jika kolom tidak ditemukan
+                    }
+                    
+                    // Konversi nilai desimal (misal 4.0) menjadi angka bulat bulat (4)
+                    var dn = parseInt(dnValue);
+                    
+                    // COCOKKAN DENGAN STATUS TOMBOL NEXT.JS
+                    if (dn === 5) return activeLevels.excellent; // DN 5 = Excellent
+                    if (dn === 4) return activeLevels.good;      // DN 4 = Good
+                    if (dn === 3) return activeLevels.moderate;  // DN 3 = Moderate
+                    if (dn === 2) return activeLevels.poor;      // DN 2 = Poor
+                    if (dn === 1) return activeLevels.bad;       // DN 1 = Bad
+                    
+                    return true;
+                });
+                
+                // Masukkan kembali objek yang lolos filter ke dalam peta
+                source.addFeatures(filteredFeatures);
+                
+                // Paksa OpenLayers untuk menggambar ulang tampilan peta terbaru
+                if (typeof map !== 'undefined') {
+                    map.render();
+                }
+            }
+        });
+    } else {
+        console.error("Variabel 'lyr_Kec_Weda_Tengah_2' tidak ditemukan. Pastikan urutan script sudah benar.");
+    }
+});
+</script>
+    </body>
+</html>
